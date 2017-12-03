@@ -7,9 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
-import com.db.awmd.challenge.domain.Account;
-import com.db.awmd.challenge.service.AccountsService;
 import java.math.BigDecimal;
+import java.util.UUID;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,6 +20,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.WebApplicationContext;
+
+import com.db.awmd.challenge.domain.Account;
+import com.db.awmd.challenge.service.AccountsService;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -101,4 +104,52 @@ public class AccountsControllerTest {
       .andExpect(
         content().string("{\"accountId\":\"" + uniqueAccountId + "\",\"balance\":123.45}"));
   }
+  
+	@Test
+	public void transferMoney() throws Exception {
+		String id1 = "Id-" + UUID.randomUUID().toString();
+		Account acnt1 = new Account(id1, new BigDecimal("100.00"));
+		this.accountsService.createAccount(acnt1);
+
+		String id2 = "Id-" + UUID.randomUUID().toString();
+		Account acnt2 = new Account(id2, new BigDecimal("100.00"));
+		this.accountsService.createAccount(acnt2);
+		this.mockMvc
+				.perform(post("/v1/accounts/transaction").contentType(MediaType.APPLICATION_JSON).content(
+						"{\"fromAccountId\":\"" + id1 + "\",\"toAccountId\":\"" + id2 + "\",\"amount\" : \"10\"}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	public void transferMoney_InvalidAmount() throws Exception {
+		String id1 = "Id-" + UUID.randomUUID().toString();
+		Account acnt1 = new Account(id1, new BigDecimal("100.00"));
+		this.accountsService.createAccount(acnt1);
+
+		String id2 = "Id-" + UUID.randomUUID().toString();
+		Account acnt2 = new Account(id2, new BigDecimal("100.00"));
+		this.accountsService.createAccount(acnt2);
+		this.mockMvc
+				.perform(post("/v1/accounts/transaction").contentType(MediaType.APPLICATION_JSON).content(
+						"{\"fromAccountId\":\"" + id1 + "\",\"toAccountId\":\"" + id2 + "\",\"amount\" : \"-10\"}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	public void transferMoney_InSufficientBalance() throws Exception {
+		String id1 = "Id-" + UUID.randomUUID().toString();
+		Account acnt1 = new Account(id1, new BigDecimal("100.00"));
+		this.accountsService.createAccount(acnt1);
+
+		String id2 = "Id-" + UUID.randomUUID().toString();
+		Account acnt2 = new Account(id2, new BigDecimal("100.00"));
+		this.accountsService.createAccount(acnt2);
+		this.mockMvc
+				.perform(post("/v1/accounts/transaction").contentType(MediaType.APPLICATION_JSON).content(
+						"{\"fromAccountId\":\"" + id1 + "\",\"toAccountId\":\"" + id2 + "\",\"amount\" : \"120\"}"))
+				.andExpect(status().isBadRequest());
+	}
+	
+	
+  
 }
